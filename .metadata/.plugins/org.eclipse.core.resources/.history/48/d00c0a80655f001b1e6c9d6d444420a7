@@ -1,0 +1,39 @@
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import javax.swing.*;
+import java.awt.*;
+
+public class MyFirstGUI implements ActionListener {
+	JFrame     window    = new JFrame("This is a simple GUI !");
+	JButton    button    = new JButton("Push me!");
+	JTextField textField = new JTextField("Type something here and press ENTER");
+	JTextArea  textArea  = new JTextArea("Information to the operator will be shown here.");
+	public MyFirstGUI() {
+		// TODO Auto-generated constructor stub
+		System.out.println("Hello from the MyFirstGUI program constructor!");
+	  window.getContentPane().add(button,   "North");
+	  window.getContentPane().add(textArea, "Center");
+	  window.getContentPane().add(textField,"South");     
+	  window.setSize(500,400);   // width,height
+	  window.setLocation(500,0); // x,y (x is "to the right of the left margin, y is "down-from-the-top")
+	  button.setBackground(Color.red);
+	  textField.setBackground(Color.yellow);
+	  textArea.setFont(new Font("default", Font.BOLD, 20)); // 20 is the font size
+	  textArea.setEditable(false); // keep cursor out (user can't modify)
+	  window.setVisible(true);   // show it
+	  window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent arg0) {
+		// TODO Auto-generated method stub
+		System.out.println("Hello from the actionPerformed() method!");
+
+	}
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		MyFirstGUI mfg = new MyFirstGUI();
+	}
+
+}

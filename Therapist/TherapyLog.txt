@@ -1,0 +1,13 @@
+
+New therapy session on Fri Jan 22 13:51:57 EST 2021
+Question was: 'will i feel better' Therapist answer was: Yes
+Question was: 'am i cool' Therapist answer was: Not Today
+
+New therapy session on Fri Jan 22 13:52:28 EST 2021
+Question was: 'am i cool' Therapist answer was: Sounds Good
+Question was: 'will i feel better' Therapist answer was: I dont' think so...
+
+New therapy session on Fri Jan 22 13:56:33 EST 2021
+Question was: 'will i feel better' Therapist answer was: Sounds Good
+Question was: 'hello' Therapist answer was: Not Today
+Question was: 'am i cool' Therapist answer was: No

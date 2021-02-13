@@ -1,15 +1,17 @@
 // Marcus Kok 200235945
-import javax.sound.midi.Soundbank;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.net.ConnectException;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.Locale;
 
-public class ChatRoomClient implements ActionListener, Runnable {
+public class PrivateChatClient implements ActionListener, Runnable {
     Socket s;
     ObjectOutputStream oos;
     ObjectInputStream ois;
@@ -18,13 +20,54 @@ public class ChatRoomClient implements ActionListener, Runnable {
     int     maxFontSize    = 50;
     int     minFontSize    = 5;
     boolean loadedFromMain = false;
+    String localChatName;
+    // instructions String for showInstructionsWindow
+    String instructions = "SENDING & RECEIVING CHAT MESSAGES"                                                        + newLine
+            + "The bar that separates the SEND area and the RECEIVE area in the main chat window is moveable."       + newLine
+            + "Also you can set the split to horitontal or vertical using the ScreenOrientation pull-down menu."     + newLine
+            + "All chat messages you receive (including ones you send) will be shown in the right / bottom area."    + newLine
+            + "ENTER chat messages to send in the left / top area and then push the green or yellow SEND button "    + newLine
+            + "at the bottom of the screen."                                                                         + newLine
+            + newLine
+            + "WHO'S IN THE CHAT ROOM?"                                                                              + newLine
+            + "Pushing the Who'sIn button will bring up a screen that shows everyone else currently in the chat"     + newLine
+            + "room and also everyone that has previously been in. This screen also lets you indicate people you"    + newLine
+            + "would like to IGNORE."                                                                                + newLine
+            + newLine
+            + "MAKING SELECTIONS FROM THE LISTS"                                                                     + newLine
+            + "PRIVATE & SAVE-FOR selections will be cleared after the send."                                        + newLine
+            + "IGNORE selections must be manually saved by pressing the SAVE button at the bottom of the list." + newLine
+            + "To select multiple recipients from a list (or deselect someone) hold down the Ctrl key while selecting."   + newLine
+            + newLine
+            + "LEAVING A MESSAGE FOR SOMEONE NOT CURRENTLY IN THE CHAT ROOM"                                         + newLine
+            + "You can select one or more people in the WHO'S NOT IN list and then use the yellow PRIVATE send key." + newLine
+            + "The message will be saved on disk and shown to them the next time they join."                         + newLine
+            + "You can add save-for recipients to either a PUBLIC or PRIVATE message to IN recipients."              + newLine
+            + newLine
+            + "SENDING A PRIVATE MESSAGE"                                                                            + newLine
+            + "You can select recipients of a PRIVATE message from the who's-in list and then use the yellow PRIVATE"+ newLine
+            + "send key. PRIVATE & SAVE-FOR (NOT-IN) recipients are automatically cleared after send."               + newLine
+            + "TIP: type your message BEFORE selecting the recipients in case the whosIn list is restored..."        + newLine
+            + newLine
+            + "SELECTING PEOPLE TO IGNORE"                                                                           + newLine
+            + "Incoming messages from people you 'ignore' will not be shown to you. But PUBLIC messages you send"    + newLine
+            + "will be shown to them. Your ignore list will be remembered when you next join. After you SELECT"      + newLine
+            + "people to ignore you must SAVE the list by pressing the SAVE button at the top of the list."          + newLine
+            + newLine
+            + "SENDING PICTURES"                                                                                     + newLine
+            + "This feature is not implemented yet. When it is, you will be able to inspect pictures in the local"   + newLine
+            + "directory and select one to send and attach a description to it."
+            ;
+
 
     // Chat Window
     JFrame chatWindow = new JFrame();
     JPanel topPanel = new JPanel();
     JPanel bottomPanel = new JPanel();
-    JLabel whosInLabel = new JLabel("Who's in the chat room:");
     JButton sendPublicButton = new JButton("Send to ALL");
+    JButton sendPrivateButton = new JButton("Send Private");
+    JButton whosInButton = new JButton("who's in the chat room");
+    JButton showInstructionsButton = new JButton("show instructions");
     JTextField whosInTextField = new JTextField(48);
     JTextField errMsgTextField = new JTextField("Error messages will show here.");
     JTextArea sendChatArea = new JTextArea();
@@ -32,6 +75,29 @@ public class ChatRoomClient implements ActionListener, Runnable {
     JScrollPane sendScrollPane = new JScrollPane(sendChatArea);
     JScrollPane receiveScrollPane = new JScrollPane(receiveChatArea);
     JSplitPane chatSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, sendScrollPane, receiveScrollPane);
+
+    // Whos in Window
+    JFrame whosInWindow = new JFrame();
+    JLabel whosInLabel = new JLabel("Who else is *IN* the chat room."); // north
+    JLabel whosNotInLabel = new JLabel("Who is NOT in right now.");     // north
+    JButton savedIgnoreButton = new JButton("SAVE the IGNORED list");  // north
+    JLabel selectPrivateLabel = new JLabel("SELECT PRIVATE recipients.");  // south
+    JLabel selectSaveForLabel = new JLabel("SELECT SAVE-FOR recipients."); // south
+    JButton selectIgnoreButton = new JButton("SELECT people to be IGNORED"); // south
+    JPanel whosInTopPanel = new JPanel();
+    JPanel whosInBotPanel = new JPanel();
+    JPanel whosInCenterPanel = new JPanel();
+    JList<String> whosInList = new JList<>();
+    JList<String> whosNotInList = new JList<>();
+    JList<String> ignoreList = new JList<>();
+    JScrollPane whosInScrollPane = new JScrollPane(whosInList);
+    JScrollPane whosNotInScrollPane = new JScrollPane(whosNotInList);
+    JScrollPane ignoreScrollPane = new JScrollPane(ignoreList);
+
+    // Instructions
+    JFrame showInstructionsWindow = new JFrame();
+    JTextArea showInstructionsTextArea = new JTextArea();
+    JScrollPane showInstructionsScrollPane = new JScrollPane(showInstructionsTextArea);
 
     //Menus
     MenuBar menuBar = new MenuBar();
@@ -42,17 +108,18 @@ public class ChatRoomClient implements ActionListener, Runnable {
     MenuItem horizontalOrientationMenuItem = new MenuItem("Horizontal");
     MenuItem verticalOrientationMenuItem = new MenuItem("Vertical");
 
-    public ChatRoomClient(String serverAddress, String chatName, String password) throws  Exception{
+    public PrivateChatClient(String serverAddress, String chatName, String password) throws  Exception{
+        localChatName = chatName;
         if(serverAddress.contains(" ") || chatName.contains(" ") || password.contains(" ")){
             throw new IllegalArgumentException("Parameters may not contain blanks.");
         }
-        System.out.println("Connecting to the chat room server at " + serverAddress + " on port 2222");
+        System.out.println("Connecting to the chat room server at " + serverAddress + " on port 4444");
         try {
-            s = new Socket(serverAddress, 2222);
+            s = new Socket(serverAddress, 4444);
         }
         catch(ConnectException ce){
-            System.out.println("Connection to TherapyServer at " + serverAddress + " on port 2222 has failed");
-            System.out.println("Is server address correct? Has the server been started on port 2222?");
+            System.out.println("Connection to PrivateChatServer at " + serverAddress + " on port 4444 has failed");
+            System.out.println("Is server address correct? Has the server been started on port 4444?");
             return; // terminate so user can fix and restart
         }
         System.out.println("Connected to the chat server!");
@@ -66,11 +133,14 @@ public class ChatRoomClient implements ActionListener, Runnable {
         else
             throw new IllegalArgumentException("Join of " + chatName + " with password " + password + " was not successful");
 
-        topPanel.add(whosInLabel);
-        topPanel.add(whosInTextField);
+        topPanel.add(whosInButton);
+        topPanel.add(showInstructionsButton);
+        topPanel.add(errMsgTextField);
+        topPanel.setLayout(new GridLayout(1, 3));
 
         bottomPanel.add(sendPublicButton);
-        bottomPanel.add(errMsgTextField);
+        bottomPanel.add(sendPrivateButton);
+        bottomPanel.setLayout(new GridLayout(1, 2));
 
         chatWindow.getContentPane().add(topPanel, "North");
         chatWindow.getContentPane().add(chatSplitPane, "Center");
@@ -79,7 +149,7 @@ public class ChatRoomClient implements ActionListener, Runnable {
         chatWindow.setTitle(chatName + "'s CHAT ROOM (Close this window to leave the chat room.)");
 
         sendPublicButton.setBackground(Color.green);
-        whosInLabel.setForeground(Color.blue);
+        sendPrivateButton.setBackground(Color.yellow);
 
         receiveChatArea.setLineWrap(true);
         receiveChatArea.setWrapStyleWord(true);
@@ -90,12 +160,15 @@ public class ChatRoomClient implements ActionListener, Runnable {
 
         chatSplitPane.setDividerLocation(0.5);
 
-        sendChatArea.setText("ENTER a message to send HERE, then push the send button below.");
+        sendChatArea.setText("");
         receiveChatArea.setText("VIEW received chat messages HERE (including the ones you sent.)" +
                                 newLine + "The bar separating the IN and OUT areas can be moved.");
 
         sendPublicButton.addActionListener(this); // so sendPublicButton can call us!
-
+        sendPrivateButton.addActionListener(this);
+        showInstructionsButton.addActionListener(this);
+        selectIgnoreButton.addActionListener(this);
+        savedIgnoreButton.addActionListener(this);
 
         chatWindow.setSize(1000, 400);
         chatWindow.setLocation(400, 100);
@@ -114,6 +187,41 @@ public class ChatRoomClient implements ActionListener, Runnable {
         screenMenu.add(horizontalOrientationMenuItem);
         horizontalOrientationMenuItem.addActionListener(this);
 
+        // set up whos in Window
+        whosInTopPanel.setLayout(new GridLayout(1, 3));
+        whosInCenterPanel.setLayout(new GridLayout(1, 3));
+        whosInBotPanel.setLayout(new GridLayout(1, 3));
+
+        whosInTopPanel.add(whosInLabel);
+        whosInTopPanel.add(whosNotInLabel);
+        whosInTopPanel.add(savedIgnoreButton);
+        whosInBotPanel.add(selectPrivateLabel);
+        whosInBotPanel.add(selectSaveForLabel);
+        whosInBotPanel.add(selectIgnoreButton);
+
+        whosInCenterPanel.add(whosInScrollPane);
+        whosInCenterPanel.add(whosNotInScrollPane);
+        whosInCenterPanel.add(ignoreScrollPane);
+
+        whosInWindow.getContentPane().add(whosInTopPanel, "North");
+        whosInWindow.getContentPane().add(whosInCenterPanel, "Center");
+        whosInWindow.getContentPane().add(whosInBotPanel, "South");
+
+        whosInWindow.setSize(1000, 400);
+        whosInWindow.setLocation(400, 500);
+
+        whosInButton.addActionListener(this);
+
+        whosInList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        whosNotInList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        ignoreList.setEnabled(false);
+        // set up showInstructions window
+        showInstructionsWindow.getContentPane().add(showInstructionsScrollPane, "Center");
+        showInstructionsTextArea.setText(instructions);
+        showInstructionsTextArea.setEditable(false);
+        showInstructionsWindow.setTitle("Instructions");
+        showInstructionsWindow.setSize(500, 600);
+
         Thread t = new Thread(this); // make an app thread (to do the receive function)
         t.start();
 
@@ -127,7 +235,7 @@ public class ChatRoomClient implements ActionListener, Runnable {
             return;
         }
         try {
-            ChatRoomClient crc = new ChatRoomClient(args[0], args[1], args[2]);
+            PrivateChatClient crc = new PrivateChatClient(args[0], args[1], args[2]);
             crc.loadedFromMain = true; // used at termination
         }
         catch(Exception e){
@@ -147,7 +255,26 @@ public class ChatRoomClient implements ActionListener, Runnable {
                 errMsgTextField.setBackground(Color.pink); // highlight to get attention
                 return;
             }
-            //System.out.println("Your message '" + chatMessageToSend + "' is being sent to the server");
+            if((!whosInList.isSelectionEmpty()) || (!whosNotInList.isSelectionEmpty())){
+                errMsgTextField.setText("PUBLIC send button was pushed but PRIVATE recipients are selected.");
+                errMsgTextField.setBackground(Color.pink);
+                return;
+            }
+            if(!whosNotInList.isSelectionEmpty()){
+                java.util.List<String> saveForRecipientsList = whosInList.getSelectedValuesList();
+                String[] saveForRecipientsArray = new String[saveForRecipientsList.size() + 1];
+                saveForRecipientsArray[0] = chatMessageToSend;
+                int i = 1;
+                for(String recipient : saveForRecipientsList){
+                    saveForRecipientsArray[i++] = recipient;
+                }
+                try{
+                    oos.writeObject(saveForRecipientsArray);
+                }
+                catch(Exception e){}
+
+            }
+            System.out.println("Your message '" + chatMessageToSend + "' is being sent to the server");
             try{
                 oos.writeObject(chatMessageToSend);
                 sendChatArea.setText(""); // clear the input field. (indication to the user that the message was sent.)
@@ -192,6 +319,64 @@ public class ChatRoomClient implements ActionListener, Runnable {
             chatSplitPane.setDividerLocation((double) 0.5); // half screen point
             return;
         }
+
+        if(ae.getSource() == sendPrivateButton){
+            java.util.List<String> privateRecipientsList = whosInList.getSelectedValuesList();
+            java.util.List<String> saveRecipientsList = whosNotInList.getSelectedValuesList();
+
+            System.out.println(privateRecipientsList.size() + " PRIVATE message recipients are: " + privateRecipientsList);
+            System.out.println(saveRecipientsList.size() + " SAVE-FOR message recipients are: " + saveRecipientsList);
+            String privateOrSaveMessage = sendChatArea.getText().trim();
+            if(privateOrSaveMessage.length() == 0){
+                errMsgTextField.setText("zero-length PRIVATE/SAVE message entered.");
+                errMsgTextField.setBackground(Color.pink);
+                return;
+            }
+            if((whosInList.isSelectionEmpty()) && (whosNotInList.isSelectionEmpty())){
+                // no selections in either list
+                errMsgTextField.setText("The sendPrivateMessage button was pushed but no recipients are selected.");
+                errMsgTextField.setBackground(Color.pink);
+                return;
+            }
+            System.out.println("PRIVATE/SAVE message entered: " + privateOrSaveMessage);
+            sendChatArea.setText("");
+            whosInList.clearSelection();
+            whosNotInList.clearSelection();
+
+            String[] privateAndSaveMessageArray = new String[privateRecipientsList.size() + saveRecipientsList.size() + 1];
+            if(privateRecipientsList.size() > 0){
+                privateAndSaveMessageArray[0] = "PRIVATE " + privateOrSaveMessage;
+            }
+            else {
+                privateAndSaveMessageArray[0] = privateOrSaveMessage;
+            }
+            int i = 1;
+            for(String recipient : privateRecipientsList) privateAndSaveMessageArray[i++] = recipient;
+            for(String recipient : saveRecipientsList) privateAndSaveMessageArray[i++] = recipient;
+            try{
+                oos.writeObject(privateAndSaveMessageArray);
+            }
+            catch(Exception e){}
+            return;
+        }
+        if(ae.getSource() == showInstructionsButton){
+            //System.out.println("showInstructionsButton pushed");
+            showInstructionsWindow.setVisible(true);
+            return;
+        }
+        if(ae.getSource() == whosInButton){
+            whosInWindow.setVisible(true);
+            return;
+        }
+        if(ae.getSource() == selectIgnoreButton){
+            System.out.println("selectIgnoreButton pushed");
+            ignoreList.setEnabled(true);
+            return;
+        }
+        if(ae.getSource() == savedIgnoreButton){
+            System.out.println("savedIgnoreButton pushed");
+            return;
+        }
     }
     public void run(){ // receive
         try{ Thread.sleep(100); // pause app thread to let constructor finish
@@ -208,19 +393,53 @@ public class ChatRoomClient implements ActionListener, Runnable {
         try{
             while(true){
                 // receive message from server and display on GUI
-                String incomingChatMessage = (String) ois.readObject();
-                if(incomingChatMessage.startsWith("[")){
-                    incomingChatMessage = incomingChatMessage.substring(1); // drop leading "]"
-                    whosInTextField.setText(incomingChatMessage);
-                    continue; // back to loop top to read next message
+                Object somethingFromServer = ois.readObject();
+
+                if(somethingFromServer instanceof String) {
+                    String chatMessage = (String) somethingFromServer;
+                    // code goes here to handle chat messages using chatMessage pointer
+                    if(chatMessage.startsWith("[")){
+                        chatMessage = chatMessage.substring(1); // drop leading "]"
+                        whosInTextField.setText(chatMessage);
+                        continue; // back to loop top to read next message
+                    }
+                    receiveChatArea.append(newLine + chatMessage);
+                    // auto-scroll the JScrollPane to bottom line so the last message will be visible.
+                    receiveChatArea.setCaretPosition(receiveChatArea.getDocument().getLength());
                 }
-                receiveChatArea.append(newLine + incomingChatMessage);
-                // auto-scroll the JScrollPane to bottom line so the last message will be visible.
-                receiveChatArea.setCaretPosition(receiveChatArea.getDocument().getLength());
+                if(somethingFromServer instanceof  String[]){
+                    String[] whosInOrOutArray = (String []) somethingFromServer;
+                    System.out.println("Received: " + Arrays.toString(whosInOrOutArray));
+                    // code goes here to handle received arrays using the whosInOrOutArray pointer
+                    if(whosInOrOutArray.length > 2) {
+                        String[] updateArray = new String[whosInOrOutArray.length];
+                        for (int i = 1; i < whosInOrOutArray.length; i++) {
+                            String chatName = whosInOrOutArray[i];
+                            if (chatName.equals(localChatName.toUpperCase())) continue;
+                            else {
+                                updateArray[i-1] = chatName;
+                            }
+                            if(i >= updateArray.length) break;
+                        }
+                        if (whosInOrOutArray[0].equals("whosin")) whosInList.setListData(updateArray);
+                        else if (whosInOrOutArray[0].equals("whosout")) whosNotInList.setListData(updateArray);
+                        else if (whosInOrOutArray[0].equals("ignore")) ignoreList.setListData(updateArray);
+                    }
+                    else{
+                        // if length == 2, no one else is in chat room. update with empty array
+                        String[] updateArray = {};
+                        if (whosInOrOutArray[0].equals("whosin")) whosInList.setListData(updateArray);
+                        else if (whosInOrOutArray[0].equals("whosout")) whosNotInList.setListData(updateArray);
+                        else if (whosInOrOutArray[0].equals("ignore")) ignoreList.setListData(updateArray);
+                    }
+
+                }
+
             }
         }
         catch (Exception e){
             // show error message to user
+            System.out.println("Error: " + e);
             errMsgTextField.setBackground(Color.pink);
             errMsgTextField.setText("CONNECTION TO THE CHAT ROOM SERVER HAS FAILED!" +
                     newLine + "You must close this chat window and then restart the client to reconnect to the server to" +
@@ -228,6 +447,7 @@ public class ChatRoomClient implements ActionListener, Runnable {
             // disable the GUI
             sendChatArea.setEditable(false);
             sendPublicButton.setEnabled(false);
+            sendPrivateButton.setEnabled(false);
 
         }
         // after catch, t thread returns to Thread object and is terminated.

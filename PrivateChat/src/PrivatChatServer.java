@@ -4,13 +4,16 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
-import java.util.Locale;
+import java.util.Date;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ChatRoomServer implements Runnable{
+public class PrivatChatServer implements Runnable{
 
     ConcurrentHashMap<String, ObjectOutputStream> whosIn = new ConcurrentHashMap<String, ObjectOutputStream>();
+    Vector<String> whosOut = new Vector<String>();
     ConcurrentHashMap<String, String> passwords = new ConcurrentHashMap<String, String>();
+    ConcurrentHashMap<String, Vector<Object>> savedMessages = new ConcurrentHashMap<String, Vector<Object>>();
     private ServerSocket ss;
 
     public static void main(String[] args) throws Exception{
@@ -18,12 +21,12 @@ public class ChatRoomServer implements Runnable{
         if(args.length > 0){
             System.out.println("Command line parameters have been provided, but are being ignored");
         }
-        new ChatRoomServer();
+        new PrivatChatServer();
 
     }
 
-    public ChatRoomServer() throws Exception {
-        ss = new ServerSocket(2222);
+    public PrivatChatServer() throws Exception {
+        ss = new ServerSocket(4444);
 
         System.out.println("ChatRoomServer is up at "
                             + InetAddress.getLocalHost().getHostAddress() +
@@ -41,8 +44,18 @@ public class ChatRoomServer implements Runnable{
             System.out.println("passwords.ser is not found, so an empty collection will be used");
         }
 
-        new Thread(this).start(); // this thread branches into the run() method.
+        try{
+            FileInputStream fis = new FileInputStream("SavedChatMessages.ser");
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            savedMessages = (ConcurrentHashMap<String, Vector<Object>>) ois.readObject();
+            System.out.println(savedMessages);
+            ois.close();
+        }
+        catch(FileNotFoundException fnfe){
+            System.out.println("SavedChatMessages.ser is not found, so an empty collection will be used");
+        }
 
+        new Thread(this).start(); // this thread branches into the run() method.
     }
 
     @Override
@@ -124,15 +137,28 @@ public class ChatRoomServer implements Runnable{
             whosIn.put(chatName, oos); // add new-join client
             String[] whosInArray = whosIn.keySet().toArray(new String[0]);
             Arrays.sort(whosInArray);
-
+            // processing for updating whos in and whos out
             sendToAllClients("Welcome to " + chatName + " who has just joined (or rejoined) the chat room!");
-            String whosInString = "["; // identifies the whosIn list to the clients.
-            for (String name : whosInArray) {
-                whosInString += name + ", ";
-            }
-            sendToAllClients(whosInString);
+            String[] whosInSendArray = new String[whosInArray.length+1]; // identifies the whosIn list to the clients.
+            whosInSendArray[0] = "whosin";
+            int i = 1;
+            for (String name : whosInArray){whosInSendArray[i++] = name;}
+            sendToAllClients(whosInSendArray);
             System.out.println(chatName + " is joining");
-            System.out.println("Currently in the chat room: " + whosInString.substring(1));
+            System.out.println("Currently in the chat room: " + Arrays.toString(whosInArray));
+
+            String[] allNames = passwords.keySet().toArray(new String[0]);
+            String[] whosOutArray = new String[passwords.size() - whosIn.size() + 1];
+            whosOutArray[0] = "whosout";
+            int j = 1;
+            for(String name : allNames){
+                if(!whosIn.containsKey(name)){
+                    whosOutArray[j++] = name;
+                }
+            }
+            sendToAllClients(whosOutArray);
+            System.out.println("Currently NOT in the chat room: " + Arrays.toString(whosOutArray));
+
         } // bottom of try for join processing
         catch(Exception e){
             System.out.println("Connection failure during join processing from " + chatName + " at " +
@@ -144,12 +170,40 @@ public class ChatRoomServer implements Runnable{
             return; // kill this client's thread
         }
 
+        // check for saved messages
+        Vector<Object> savedMessageList = savedMessages.get(chatName);
+        if(savedMessageList != null) {
+            while (savedMessageList.size() > 1) {
+                String savedMessage = (String) savedMessageList.remove(1);
+                try {
+                    oos.writeObject(savedMessage);
+                    saveMessages();
+                } catch (Exception e) {
+                    break;
+                }
+            }
+        }
+
         try {
             // SEND/RECEIVE processing
             while (true) {
-                String message = (String) ois.readObject();
-                System.out.println("Received " + message + " from " + chatName);
-                sendToAllClients(chatName + " says: " + message);
+                Object somethingfromClient = ois.readObject();
+                if(somethingfromClient instanceof String) {
+                    String message = (String)somethingfromClient;
+                    System.out.println("Received " + message + " from " + chatName);
+                    sendToAllClients(chatName + " says: " + message);
+                }
+                else if(somethingfromClient instanceof String[]){
+                    String[] privateOrSaveArray = (String[])somethingfromClient;
+                    if(whosIn.containsKey(privateOrSaveArray[1]))
+                        sendToPrivateRecipients(chatName, privateOrSaveArray);
+                    else
+                        saveForNotInRecipients(chatName, privateOrSaveArray);
+                }
+                else{
+                    System.out.println("Object received from " + chatName + " was not type String or array-of-Strings");
+                    System.out.println(somethingfromClient);
+                }
             }
         }
         catch (Exception e){
@@ -159,16 +213,30 @@ public class ChatRoomServer implements Runnable{
                 // if = then this is the thread for the client that IS in the chat room now.
                 // Do "normal" leave processing
                 whosIn.remove(chatName);
+
                 sendToAllClients("Goodbye to " + chatName + " who just left the chat room.");
                 String[] whosInArray = whosIn.keySet().toArray(new String[0]);
-                String whosInString = "[";
+                String[] whosInSendArray = new String[whosInArray.length + 1];
+                whosInSendArray[0] = "whosin";
+                int i = 1;
                 for (String name : whosInArray) {
-                    whosInString += name + ", ";
+                    whosInSendArray[i++] = name;
                 }
-                sendToAllClients(whosInString);
-
+                System.out.println("whosInSend: " + Arrays.toString(whosInSendArray));
+                sendToAllClients(whosInSendArray);
                 System.out.println(chatName + " is leaving the chat room");
 
+
+                String[] allNames = passwords.keySet().toArray(new String[0]);
+                String[] whosOutArray = new String[passwords.size() - whosIn.size() + 1];
+                whosOutArray[0] = "whosout";
+                int j = 1;
+                for(String name : allNames){
+                    if(!whosIn.containsKey(name)){
+                        whosOutArray[j++] = name;
+                    }
+                }
+                sendToAllClients(whosOutArray);
             }
             else{
                 // if NOT = then this was the thread for the client in a PREVIOUS session
@@ -185,6 +253,65 @@ public class ChatRoomServer implements Runnable{
         }
     }
 
+    private void sendToPrivateRecipients(String senderChatName, String[] messageAndRecipients){
+        System.out.println("In sendToPrivateRecipients()");
+        String privateMessage = messageAndRecipients[0];
+        messageAndRecipients[0] = ""; // erase message in slot 0
+        String privateRecipients = Arrays.toString(messageAndRecipients);
+        privateRecipients = "[" + privateRecipients.substring(3) + "]"; // drop leading comma
+        String totalPrivateMessage = senderChatName + " says PRIVATELY to " + privateRecipients + ": " + privateMessage;
+        System.out.println(totalPrivateMessage);
+
+        // send private message to whosIn recipients
+        Vector<String> sendFailuresVector = new Vector<String>();
+        for(int n = 1; n < messageAndRecipients.length; n++){
+            // private recipients start at index 1 of the array
+            ObjectOutputStream privateRecipientsOOS = whosIn.get(messageAndRecipients[n]);
+            try{privateRecipientsOOS.writeObject(totalPrivateMessage);}
+            catch(Exception e){ sendFailuresVector.add(messageAndRecipients[n]);}
+        }
+        if(!sendFailuresVector.isEmpty()){
+            sendFailuresVector.add(0, messageAndRecipients[0]); // insert message
+            String[] sendFailuresArray = sendFailuresVector.toArray(new String[0]);
+            saveForNotInRecipients(senderChatName, sendFailuresArray);
+        }
+        ObjectOutputStream privateSenderOOS = whosIn.get(senderChatName);
+        try{privateSenderOOS.writeObject(totalPrivateMessage);}
+        catch(Exception e){}
+    }
+
+    private void saveForNotInRecipients(String saverChatName, String[] messageAndRecipients){
+        System.out.println("In saveForNotInRecipients()");
+        String saveMessage = messageAndRecipients[0];
+        messageAndRecipients[0] = "";
+        String saveRecipients = Arrays.toString(messageAndRecipients);
+        saveRecipients = "[" + saveRecipients.substring(3) + "]"; // drop leading comma
+        System.out.println("Received save message '" + saveMessage + "' from " + saverChatName);
+        String totalSaveMessage;
+        if(saveMessage.startsWith("PRIVATE"))
+            totalSaveMessage = saverChatName + " saved this message for " + saveRecipients + " on " + new Date() + " : " + saveMessage;
+        else
+            totalSaveMessage = saverChatName + " saved this message for " + saveRecipients + " on " + new Date() + " : " + saveMessage;
+        System.out.println(totalSaveMessage);
+
+        for(int i = 1; i < messageAndRecipients.length; i++){
+            String saveRecipient = messageAndRecipients[i];
+            // get the pointer to the recipient's Vector of saved messages in the savedMessages collection.
+            Vector<Object> recipientSavedMessagesVector = savedMessages.get(saveRecipient);
+            if(recipientSavedMessagesVector == null){
+                recipientSavedMessagesVector = new Vector<Object>();
+                recipientSavedMessagesVector.add("ignore list"); // slot 0 is reserved for the ignore list
+                savedMessages.put(saveRecipient, recipientSavedMessagesVector); // add chatName and Vector to savedMessages collection
+            }
+            // Add the message to the bottom of the recipient's vector
+            recipientSavedMessagesVector.add(totalSaveMessage);
+        }
+        saveMessages();
+        ObjectOutputStream oos = whosIn.get(saverChatName);
+        try{oos.writeObject(totalSaveMessage);}
+        catch(Exception e){}
+    }
+
     private synchronized void savePasswords(){
         try{
             FileOutputStream fos = new FileOutputStream("passwords.ser");
@@ -194,6 +321,18 @@ public class ChatRoomServer implements Runnable{
         }
         catch(Exception e){
             System.out.println("passwords collection cannot be saved on disk: " + e);
+        }
+    }
+
+    private synchronized void saveMessages(){
+        try{
+            FileOutputStream fos = new FileOutputStream("SavedChatMessages.ser");
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(savedMessages);
+            oos.close();
+        }
+        catch(Exception e){
+            System.out.println("messages collection cannot be saved on disk: " + e);
         }
     }
 

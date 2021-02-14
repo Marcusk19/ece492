@@ -160,10 +160,8 @@ public class PrivateChatClient implements ActionListener, Runnable {
         errMsgTextField.setEditable(false);
         whosInTextField.setEditable(false);
 
-
         receiveChatArea.setText("VIEW received chat messages HERE (including the ones you sent.)" +
                                 newLine + "The bar separating the IN and OUT areas can be moved.");
-        chatSplitPane.setDividerLocation(0.5);
 
         sendPublicButton.addActionListener(this); // so sendPublicButton can call us!
         sendPrivateButton.addActionListener(this);
@@ -173,6 +171,7 @@ public class PrivateChatClient implements ActionListener, Runnable {
 
         chatWindow.setSize(1000, 400);
         chatWindow.setLocation(400, 100);
+        chatSplitPane.setDividerLocation(460);
         chatWindow.setVisible(true);
 
         // Add menus to ChatWindow

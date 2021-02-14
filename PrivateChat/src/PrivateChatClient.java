@@ -10,6 +10,7 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Vector;
 
 public class PrivateChatClient implements ActionListener, Runnable {
     Socket s;
@@ -20,6 +21,7 @@ public class PrivateChatClient implements ActionListener, Runnable {
     int     maxFontSize    = 50;
     int     minFontSize    = 5;
     boolean loadedFromMain = false;
+    Vector<String> blackList = new Vector<String>();
     String localChatName;
     // instructions String for showInstructionsWindow
     String instructions = "SENDING & RECEIVING CHAT MESSAGES"                                                        + newLine
@@ -158,11 +160,10 @@ public class PrivateChatClient implements ActionListener, Runnable {
         errMsgTextField.setEditable(false);
         whosInTextField.setEditable(false);
 
-        chatSplitPane.setDividerLocation(0.5);
 
-        sendChatArea.setText("");
         receiveChatArea.setText("VIEW received chat messages HERE (including the ones you sent.)" +
                                 newLine + "The bar separating the IN and OUT areas can be moved.");
+        chatSplitPane.setDividerLocation(0.5);
 
         sendPublicButton.addActionListener(this); // so sendPublicButton can call us!
         sendPrivateButton.addActionListener(this);
@@ -229,7 +230,7 @@ public class PrivateChatClient implements ActionListener, Runnable {
     }
 
     public static void main(String[] args){
-        System.out.println("ChatRoomClient: Marcus Kok");
+        System.out.println("PrivateChatClient: by Marcus Kok");
         if(args.length != 3){
             System.out.println("Restart, enter THREE parameters: \n 1. server address \n 2. chat name \n 3. password");
             return;
@@ -369,15 +370,43 @@ public class PrivateChatClient implements ActionListener, Runnable {
             return;
         }
         if(ae.getSource() == selectIgnoreButton){
-            System.out.println("selectIgnoreButton pushed");
+
             ignoreList.setEnabled(true);
+            Vector<String> everyone = new Vector<String>();
+            for(int i = 0; i < whosInList.getModel().getSize(); i++){
+                everyone.add(whosInList.getModel().getElementAt(i));
+            }
+            for(int i = 0; i < whosNotInList.getModel().getSize(); i++) {
+                everyone.add(whosNotInList.getModel().getElementAt(i));
+            }
+            ignoreList.setListData(everyone);
             return;
         }
         if(ae.getSource() == savedIgnoreButton){
-            System.out.println("savedIgnoreButton pushed");
+
+            java.util.List<String> selectedIgnoreNames = ignoreList.getSelectedValuesList();
+            String[] whosIgnoredArray = new String[selectedIgnoreNames.size() + 1];
+            whosIgnoredArray[0] = "ignore";
+            int i = 1;
+            for(String name : selectedIgnoreNames){
+                whosIgnoredArray[i++] = name;
+            }
+            try{oos.writeObject(whosIgnoredArray);
+                System.out.println("sent " + Arrays.toString(whosIgnoredArray) + " to server");}
+            catch(Exception e){}
+            String[] updateArray = new String[selectedIgnoreNames.size()];
+            blackList.clear();
+            // update blacklist and ignore panel
+            for(int j = 0; j < selectedIgnoreNames.size(); j++){
+                updateArray[j] = selectedIgnoreNames.get(j);
+                blackList.add(selectedIgnoreNames.get(j));
+            }
+            ignoreList.setListData(updateArray);
+            ignoreList.setEnabled(false);
             return;
         }
     }
+
     public void run(){ // receive
         try{ Thread.sleep(100); // pause app thread to let constructor finish
         }
@@ -396,23 +425,27 @@ public class PrivateChatClient implements ActionListener, Runnable {
                 Object somethingFromServer = ois.readObject();
 
                 if(somethingFromServer instanceof String) {
+                    boolean notBlocked = true;
                     String chatMessage = (String) somethingFromServer;
                     // code goes here to handle chat messages using chatMessage pointer
-                    if(chatMessage.startsWith("[")){
-                        chatMessage = chatMessage.substring(1); // drop leading "]"
-                        whosInTextField.setText(chatMessage);
-                        continue; // back to loop top to read next message
+                    for(String name : blackList){
+                        if(chatMessage.startsWith(name)) {
+                            System.out.println("blocked message from " + name);
+                            notBlocked = false;
+                        };
                     }
-                    receiveChatArea.append(newLine + chatMessage);
-                    // auto-scroll the JScrollPane to bottom line so the last message will be visible.
-                    receiveChatArea.setCaretPosition(receiveChatArea.getDocument().getLength());
+                    if(notBlocked) {
+                        receiveChatArea.append(newLine + chatMessage);
+                        // auto-scroll the JScrollPane to bottom line so the last message will be visible.
+                        receiveChatArea.setCaretPosition(receiveChatArea.getDocument().getLength());
+                    }
                 }
                 if(somethingFromServer instanceof  String[]){
                     String[] whosInOrOutArray = (String []) somethingFromServer;
                     System.out.println("Received: " + Arrays.toString(whosInOrOutArray));
                     // code goes here to handle received arrays using the whosInOrOutArray pointer
-                    if(whosInOrOutArray.length > 2) {
-                        String[] updateArray = new String[whosInOrOutArray.length];
+                    String[] updateArray = new String[whosInOrOutArray.length];
+                    if(whosInOrOutArray.length > 2 || whosInOrOutArray[0].equals("ignore")) {
                         for (int i = 1; i < whosInOrOutArray.length; i++) {
                             String chatName = whosInOrOutArray[i];
                             if (chatName.equals(localChatName.toUpperCase())) continue;
@@ -421,18 +454,20 @@ public class PrivateChatClient implements ActionListener, Runnable {
                             }
                             if(i >= updateArray.length) break;
                         }
+                    }
+                        // if length == 2 and is not an ignore array, no one else is in chat room. update with empty array
                         if (whosInOrOutArray[0].equals("whosin")) whosInList.setListData(updateArray);
                         else if (whosInOrOutArray[0].equals("whosout")) whosNotInList.setListData(updateArray);
-                        else if (whosInOrOutArray[0].equals("ignore")) ignoreList.setListData(updateArray);
-                    }
-                    else{
-                        // if length == 2, no one else is in chat room. update with empty array
-                        String[] updateArray = {};
-                        if (whosInOrOutArray[0].equals("whosin")) whosInList.setListData(updateArray);
-                        else if (whosInOrOutArray[0].equals("whosout")) whosNotInList.setListData(updateArray);
-                        else if (whosInOrOutArray[0].equals("ignore")) ignoreList.setListData(updateArray);
-                    }
-
+                        else if (whosInOrOutArray[0].equals("ignore")){
+                            ignoreList.setListData(updateArray);
+                            blackList.clear();
+                            for(String name : updateArray){
+                                if(name != null) {
+                                    blackList.add(name);
+                                }
+                            }
+                            System.out.println("blacklist for " + localChatName + blackList);
+                        }
                 }
 
             }

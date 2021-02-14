@@ -8,24 +8,25 @@ import java.util.Date;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PrivatChatServer implements Runnable{
+public class PrivateChatServer implements Runnable{
 
     ConcurrentHashMap<String, ObjectOutputStream> whosIn = new ConcurrentHashMap<String, ObjectOutputStream>();
     Vector<String> whosOut = new Vector<String>();
     ConcurrentHashMap<String, String> passwords = new ConcurrentHashMap<String, String>();
     ConcurrentHashMap<String, Vector<Object>> savedMessages = new ConcurrentHashMap<String, Vector<Object>>();
+
     private ServerSocket ss;
 
     public static void main(String[] args) throws Exception{
-        System.out.println("Marcus Kok");
+        System.out.println("PrivateChatServer: by Marcus Kok");
         if(args.length > 0){
             System.out.println("Command line parameters have been provided, but are being ignored");
         }
-        new PrivatChatServer();
+        new PrivateChatServer();
 
     }
 
-    public PrivatChatServer() throws Exception {
+    public PrivateChatServer() throws Exception {
         ss = new ServerSocket(4444);
 
         System.out.println("ChatRoomServer is up at "
@@ -48,7 +49,12 @@ public class PrivatChatServer implements Runnable{
             FileInputStream fis = new FileInputStream("SavedChatMessages.ser");
             ObjectInputStream ois = new ObjectInputStream(fis);
             savedMessages = (ConcurrentHashMap<String, Vector<Object>>) ois.readObject();
-            System.out.println(savedMessages);
+            System.out.println("Saved Messages:");
+            for(String chatName : savedMessages.keySet()){
+                System.out.println(chatName +":");
+                Vector<Object> printArray = savedMessages.get(chatName);
+                for(int i = 1; i<printArray.size(); i++) System.out.println(printArray.get(i));
+            }
             ois.close();
         }
         catch(FileNotFoundException fnfe){
@@ -157,6 +163,7 @@ public class PrivatChatServer implements Runnable{
                 }
             }
             sendToAllClients(whosOutArray);
+            whosOutArray[0] = "";
             System.out.println("Currently NOT in the chat room: " + Arrays.toString(whosOutArray));
 
         } // bottom of try for join processing
@@ -170,9 +177,19 @@ public class PrivatChatServer implements Runnable{
             return; // kill this client's thread
         }
 
+
+
         // check for saved messages
         Vector<Object> savedMessageList = savedMessages.get(chatName);
         if(savedMessageList != null) {
+            // look for ignore array at slot 0 of savedMessagelist
+            if(savedMessageList.get(0) instanceof String[]){
+                System.out.println("found ignore list for " + chatName);
+                try{
+                    oos.writeObject(savedMessageList.get(0));
+                }
+                catch(Exception e){}
+            }
             while (savedMessageList.size() > 1) {
                 String savedMessage = (String) savedMessageList.remove(1);
                 try {
@@ -190,11 +207,27 @@ public class PrivatChatServer implements Runnable{
                 Object somethingfromClient = ois.readObject();
                 if(somethingfromClient instanceof String) {
                     String message = (String)somethingfromClient;
-                    System.out.println("Received " + message + " from " + chatName);
+                    System.out.println("Received " + "'" + message + "'" + " from " + chatName);
                     sendToAllClients(chatName + " says: " + message);
                 }
                 else if(somethingfromClient instanceof String[]){
                     String[] privateOrSaveArray = (String[])somethingfromClient;
+                    System.out.println("received: " + Arrays.toString(privateOrSaveArray) + " from " + chatName);
+                    // check for ignore-list processing
+                    if(privateOrSaveArray[0].equals("ignore")){
+                        System.out.println("Adding " + Arrays.toString(privateOrSaveArray) + " to " + chatName + "'s ignore list");
+                        if(savedMessages.containsKey(chatName)) {
+                            savedMessages.get(chatName).remove(0);
+                            savedMessages.get(chatName).add(0, privateOrSaveArray);
+                        }
+                        else{
+                            Vector<Object> userSavedMessagesVector = new Vector<Object>();
+                            userSavedMessagesVector.add(privateOrSaveArray);
+                            savedMessages.put(chatName, userSavedMessagesVector);
+                        }
+                        saveMessages();
+                        continue;
+                    }
                     if(whosIn.containsKey(privateOrSaveArray[1]))
                         sendToPrivateRecipients(chatName, privateOrSaveArray);
                     else
@@ -208,6 +241,7 @@ public class PrivatChatServer implements Runnable{
         }
         catch (Exception e){
             // LEAVE processing
+            System.out.println(e);
             ObjectOutputStream currentOOS = whosIn.get(chatName);
             if(currentOOS == oos){
                 // if = then this is the thread for the client that IS in the chat room now.
@@ -247,8 +281,11 @@ public class PrivatChatServer implements Runnable{
 
     private synchronized void sendToAllClients(Object message){ // "synchronized" restricts client threads to enter one at a time
         ObjectOutputStream[] oosArray = whosIn.values().toArray(new ObjectOutputStream[0]);
-        for (ObjectOutputStream clientOOS : oosArray) {
-            try{clientOOS.writeObject(message);}
+        for (ObjectOutputStream clientOOS : whosIn.values()) {
+            try{
+
+                clientOOS.writeObject(message);
+            }
             catch(IOException e){} // do nothing if send error
         }
     }
@@ -259,7 +296,7 @@ public class PrivatChatServer implements Runnable{
         messageAndRecipients[0] = ""; // erase message in slot 0
         String privateRecipients = Arrays.toString(messageAndRecipients);
         privateRecipients = "[" + privateRecipients.substring(3) + "]"; // drop leading comma
-        String totalPrivateMessage = senderChatName + " says PRIVATELY to " + privateRecipients + ": " + privateMessage;
+        String totalPrivateMessage = senderChatName + " says PRIVATELY to " + privateRecipients + ": " + privateMessage.substring(7);
         System.out.println(totalPrivateMessage);
 
         // send private message to whosIn recipients
@@ -285,7 +322,7 @@ public class PrivatChatServer implements Runnable{
         String saveMessage = messageAndRecipients[0];
         messageAndRecipients[0] = "";
         String saveRecipients = Arrays.toString(messageAndRecipients);
-        saveRecipients = "[" + saveRecipients.substring(3) + "]"; // drop leading comma
+        saveRecipients = "[" + saveRecipients.substring(3); // drop leading comma
         System.out.println("Received save message '" + saveMessage + "' from " + saverChatName);
         String totalSaveMessage;
         if(saveMessage.startsWith("PRIVATE"))

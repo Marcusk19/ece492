@@ -288,22 +288,16 @@ public class PictureChatClient implements ActionListener, Runnable, ListSelectio
                 return;
             }
 
-            if((!whosInList.isSelectionEmpty()) || (!whosNotInList.isSelectionEmpty())){
-                errMsgTextField.setText("PUBLIC send button was pushed but PRIVATE recipients are selected.");
-                errMsgTextField.setBackground(Color.pink);
-                return;
-            }
-            if(!whosNotInList.isSelectionEmpty()){
+            if(!whosNotInList.isSelectionEmpty()){ // SAVE-FOR recipients selected!!
                 List<String> saveForRecipientsList = whosInList.getSelectedValuesList();
                 Vector<Object> selectedRecipientsVector = new Vector<Object>(saveForRecipientsList);
                 if(selectedPicture == null) // a picture was not selected
-                    selectedRecipientsVector.add(0, chatMessageToSend); // ad text message at top of list
+                    selectedRecipientsVector.add(0, chatMessageToSend); // add text message at top of list
                 else
                     selectedRecipientsVector.add(0, selectedPicture); // add picture at top of list
                 Object[] saveForRecipientsArray = selectedRecipientsVector.toArray(new Object[0]);
                 send(saveForRecipientsArray);
                 whosNotInList.clearSelection();
-
             }
             if(selectedPicture == null) { // a picture has NOT been selected to send
                 System.out.println("Your message '" + chatMessageToSend + "' is being sent to the server");

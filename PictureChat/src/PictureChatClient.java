@@ -12,6 +12,7 @@ import java.io.ObjectOutputStream;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Vector;
 
 public class PictureChatClient implements ActionListener, Runnable, ListSelectionListener {
@@ -286,14 +287,14 @@ public class PictureChatClient implements ActionListener, Runnable, ListSelectio
                 errMsgTextField.setBackground(Color.pink); // highlight to get attention
                 return;
             }
-            /*
+
             if((!whosInList.isSelectionEmpty()) || (!whosNotInList.isSelectionEmpty())){
                 errMsgTextField.setText("PUBLIC send button was pushed but PRIVATE recipients are selected.");
                 errMsgTextField.setBackground(Color.pink);
                 return;
-            }*/
+            }
             if(!whosNotInList.isSelectionEmpty()){
-                java.util.List<String> saveForRecipientsList = whosInList.getSelectedValuesList();
+                List<String> saveForRecipientsList = whosInList.getSelectedValuesList();
                 Vector<Object> selectedRecipientsVector = new Vector<Object>(saveForRecipientsList);
                 if(selectedPicture == null) // a picture was not selected
                     selectedRecipientsVector.add(0, chatMessageToSend); // ad text message at top of list
@@ -363,45 +364,78 @@ public class PictureChatClient implements ActionListener, Runnable, ListSelectio
             return;
         }
 
-        if(ae.getSource() == sendPrivateButton){
-            java.util.List<String> privateRecipientsList = whosInList.getSelectedValuesList();
-            java.util.List<String> saveRecipientsList = whosNotInList.getSelectedValuesList();
+        if(ae.getSource() == sendPrivateButton) {
 
-            System.out.println(privateRecipientsList.size() + " PRIVATE message recipients are: " + privateRecipientsList);
-            System.out.println(saveRecipientsList.size() + " SAVE-FOR message recipients are: " + saveRecipientsList);
-            String privateOrSaveMessage = sendChatArea.getText().trim();
-            if(privateOrSaveMessage.length() == 0){
-                errMsgTextField.setText("zero-length PRIVATE/SAVE message entered.");
-                errMsgTextField.setBackground(Color.pink);
-                return;
-            }
-            if((whosInList.isSelectionEmpty()) && (whosNotInList.isSelectionEmpty())){
+            if ((whosInList.isSelectionEmpty()) && (whosNotInList.isSelectionEmpty())) {
                 // no selections in either list
                 errMsgTextField.setText("The sendPrivateMessage button was pushed but no recipients are selected.");
                 errMsgTextField.setBackground(Color.pink);
                 return;
             }
-            System.out.println("PRIVATE/SAVE message entered: " + privateOrSaveMessage);
-            sendChatArea.setText("");
+            String privateMessage = null;
+            if (selectedPicture == null) {
+                // no picture is selected, so we are sending a private text message
+                privateMessage = sendChatArea.getText().trim();
+                if (privateMessage.length() == 0) {
+                    errMsgTextField.setText("zero-length PRIVATE/SAVE message entered.");
+                    errMsgTextField.setBackground(Color.pink);
+                    return;
+                }
+                privateMessage = "PRIVATE " + localChatName + " says " + sendChatArea.getText().trim();
+                sendChatArea.setText("");
+            } else {
+                // picture HAS been selected!
+                selectedDescription = selectedPicture.getDescription(); // check if user wants to replace description
+                String alteredDescription = sendChatArea.getText().trim();
+                if(alteredDescription.startsWith("The selected picture will be sent with the default description"))
+                    selectedPicture.setDescription("PRIVATE " + localChatName + " sends " + selectedDescription);
+                else
+                    selectedPicture.setDescription("PRIVATE " + localChatName + " sends " + alteredDescription);
+            }
+
+            if(whosInList.getValueIsAdjusting()){
+                // user is still selecting!
+                System.out.println("Problem getting whosInList selections");
+                return;
+            }
+            java.util.List privateRecipientsList = whosInList.getSelectedValuesList();
+            System.out.println("privateRecipientsList: " + privateRecipientsList);
+
+            if(whosNotInList.getValueIsAdjusting()){
+                // user is still selecting!
+                System.out.println("Problem getting whosNotInList selections");
+                return;
+            }
+            java.util.List saveRecipientsList = whosNotInList.getSelectedValuesList();
+            System.out.println("saveRecipientsList: " + saveRecipientsList);
+
             whosInList.clearSelection();
             whosNotInList.clearSelection();
 
-            String[] privateAndSaveMessageArray = new String[privateRecipientsList.size() + saveRecipientsList.size() + 1];
-            if(privateRecipientsList.size() > 0){
-                privateAndSaveMessageArray[0] = "PRIVATE " + privateOrSaveMessage;
+            Object[] recipientsArray = new Object[privateRecipientsList.size() + saveRecipientsList.size() + 1];
+            int i = 0;
+            if(selectedPicture == null) // a picture was not selected
+                recipientsArray[i++] = privateMessage; // Add message at top
+            else
+                recipientsArray[i++] = selectedPicture; // Add picture at top
+            for(Object recipient : privateRecipientsList){
+                recipientsArray[i++] = recipient;
             }
-            else {
-                privateAndSaveMessageArray[0] = privateOrSaveMessage;
+            for(Object recipient : saveRecipientsList){
+                recipientsArray[i++] = recipient;
             }
-            int i = 1;
-            for(String recipient : privateRecipientsList) privateAndSaveMessageArray[i++] = recipient;
-            for(String recipient : saveRecipientsList) privateAndSaveMessageArray[i++] = recipient;
-            try{
-                oos.writeObject(privateAndSaveMessageArray);
+            System.out.println("recipientsArray being sent to server is " + Arrays.toString(recipientsArray));
+            send(recipientsArray);
+
+            if(selectedPicture != null){
+                selectedPicture.setDescription(selectedDescription);
             }
-            catch(Exception e){}
+            picturesList.clearSelection();
+            selectedPicture = null;
+            sendChatArea.setText("");
             return;
         }
+
         if(ae.getSource() == showInstructionsButton){
             //System.out.println("showInstructionsButton pushed");
             showInstructionsWindow.setVisible(true);
@@ -426,7 +460,7 @@ public class PictureChatClient implements ActionListener, Runnable, ListSelectio
         }
         if(ae.getSource() == savedIgnoreButton){
 
-            java.util.List<String> selectedIgnoreNames = ignoreList.getSelectedValuesList();
+            List<String> selectedIgnoreNames = ignoreList.getSelectedValuesList();
             String[] whosIgnoredArray = new String[selectedIgnoreNames.size() + 1];
             whosIgnoredArray[0] = "ignore";
             int i = 1;

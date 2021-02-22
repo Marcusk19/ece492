@@ -192,7 +192,9 @@ public class PictureChatServer implements Runnable{
                 catch(Exception e){}
             }
             while (savedMessageList.size() > 1) {
-                String savedMessage = (String) savedMessageList.remove(1);
+                Object savedMessage = savedMessageList.remove(1);
+                if(savedMessage instanceof ImageIcon) System.out.println("Found saved image for " + chatName);
+                if(savedMessage instanceof String) System.out.println("Found message for " + chatName);
                 try {
                     oos.writeObject(savedMessage);
                     saveMessages();
@@ -213,9 +215,9 @@ public class PictureChatServer implements Runnable{
                 }
                 else if(somethingfromClient instanceof Object[]){
                     Object[] privateOrSaveArray = (Object[])somethingfromClient;
-                    System.out.println("Received Array: " + Arrays.toString(privateOrSaveArray) + " from " + chatName);
                     // check for ignore-list processing
                     if(privateOrSaveArray[0] instanceof  String) {
+                        System.out.println("Received Array-of-Strings: " + Arrays.toString(privateOrSaveArray) + " from " + chatName);
                         String[] arrayOfStrings = (String[]) privateOrSaveArray;
                         if (arrayOfStrings[0].equals("ignore")) {
                             System.out.println("Adding " + Arrays.toString(privateOrSaveArray) + " to " + chatName + "'s ignore list");
@@ -225,6 +227,9 @@ public class PictureChatServer implements Runnable{
                             continue;
                         }
                     }
+                    // the received array may have a picture or a chatName in slot 0
+                    // but either is Ok, sendToPrivateRecipients will handle our saving AND sending
+                    // no need for saveMessages() method
                     sendToPrivateRecipients(chatName, privateOrSaveArray);
                 }
                 else if(somethingfromClient instanceof ImageIcon){
@@ -327,7 +332,7 @@ public class PictureChatServer implements Runnable{
             picture.setDescription(description);
         }
 
-        // send private message/picture to all private recipietns currently in the chatRoom
+        // send private message/picture to all private recipients currently in the chatRoom
         for(String privateRecipient : sendRecipients){
             ObjectOutputStream privateRecipientOOS = whosIn.get(privateRecipient);
             try{
@@ -353,11 +358,11 @@ public class PictureChatServer implements Runnable{
         // save this message /picture for any saveResidents in the savedMessage file
         for(String saveRecipient : saveRecipients){
             // are there save-for recipients
-            Vector recipientSavedMessageVector = savedMessages.get(saveRecipient);
+            Vector<Object> recipientSavedMessageVector = savedMessages.get(saveRecipient);
             if(recipientSavedMessageVector == null){
                 // no messages have ver been saved for this client
                 System.out.println("Adding a new client entry in saveMessages for a SAVE operation");
-                recipientSavedMessageVector = new Vector();
+                recipientSavedMessageVector = new Vector<>();
                 String[] emptyIgnoreArray = {"ignore"};
                 recipientSavedMessageVector.add(emptyIgnoreArray); // to slot [0];
                 savedMessages.put(saveRecipient,recipientSavedMessageVector); // add chatName key and ignore list to savedMessages
@@ -367,38 +372,6 @@ public class PictureChatServer implements Runnable{
             if(picture != null) recipientSavedMessageVector.add(picture);
         }
         if(!saveRecipients.isEmpty()) saveMessages();
-    }
-
-    private void saveForNotInRecipients(String saverChatName, String[] messageAndRecipients){
-        System.out.println("In saveForNotInRecipients()");
-        String saveMessage = messageAndRecipients[0];
-        messageAndRecipients[0] = "";
-        String saveRecipients = Arrays.toString(messageAndRecipients);
-        saveRecipients = "[" + saveRecipients.substring(3); // drop leading comma
-        System.out.println("Received save message '" + saveMessage + "' from " + saverChatName);
-        String totalSaveMessage;
-        if(saveMessage.startsWith("PRIVATE"))
-            totalSaveMessage = saverChatName + " saved this message for " + saveRecipients + " on " + new Date() + " : " + saveMessage;
-        else
-            totalSaveMessage = saverChatName + " saved this message for " + saveRecipients + " on " + new Date() + " : " + saveMessage;
-        System.out.println(totalSaveMessage);
-
-        for(int i = 1; i < messageAndRecipients.length; i++){
-            String saveRecipient = messageAndRecipients[i];
-            // get the pointer to the recipient's Vector of saved messages in the savedMessages collection.
-            Vector<Object> recipientSavedMessagesVector = savedMessages.get(saveRecipient);
-            if(recipientSavedMessagesVector == null){
-                recipientSavedMessagesVector = new Vector<Object>();
-                recipientSavedMessagesVector.add("ignore list"); // slot 0 is reserved for the ignore list
-                savedMessages.put(saveRecipient, recipientSavedMessagesVector); // add chatName and Vector to savedMessages collection
-            }
-            // Add the message to the bottom of the recipient's vector
-            recipientSavedMessagesVector.add(totalSaveMessage);
-        }
-        saveMessages();
-        ObjectOutputStream oos = whosIn.get(saverChatName);
-        try{oos.writeObject(totalSaveMessage);}
-        catch(Exception e){}
     }
 
     private synchronized void savePasswords(){

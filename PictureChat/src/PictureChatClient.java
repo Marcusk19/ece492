@@ -1,8 +1,12 @@
 // Marcus Kok 200235945
+
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ConnectException;
@@ -10,7 +14,7 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.Vector;
 
-public class PictureChatClient implements ActionListener, Runnable {
+public class PictureChatClient implements ActionListener, Runnable, ListSelectionListener {
     Socket s;
     ObjectOutputStream oos;
     ObjectInputStream ois;
@@ -58,9 +62,17 @@ public class PictureChatClient implements ActionListener, Runnable {
             + "This feature is not implemented yet. When it is, you will be able to inspect pictures in the local"   + newLine
             + "directory and select one to send and attach a description to it."
             ;
-
+    // non-GUI pointers for pictureChat
+    ImageIcon selectedPicture;
+    Image selectedImage;
+    String selectedDescription;
+    File localDirectory = new File(System.getProperty("user.dir"));
 
     // Chat Window
+    JButton loadMyPicturesButton = new JButton("Load my pictures from disk.");
+    JList<ImageIcon> picturesList = new JList<ImageIcon>();
+    JScrollPane picturesScrollPane = new JScrollPane(picturesList);
+    JPanel splitPanePanel = new JPanel();
     JFrame chatWindow = new JFrame();
     JPanel topPanel = new JPanel();
     JPanel bottomPanel = new JPanel();
@@ -74,7 +86,7 @@ public class PictureChatClient implements ActionListener, Runnable {
     JTextArea receiveChatArea = new JTextArea();
     JScrollPane sendScrollPane = new JScrollPane(sendChatArea);
     JScrollPane receiveScrollPane = new JScrollPane(receiveChatArea);
-    JSplitPane chatSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, sendScrollPane, receiveScrollPane);
+    JSplitPane chatSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true, splitPanePanel, receiveScrollPane);
 
     // Whos in Window
     JFrame whosInWindow = new JFrame();
@@ -108,6 +120,8 @@ public class PictureChatClient implements ActionListener, Runnable {
     MenuItem horizontalOrientationMenuItem = new MenuItem("Horizontal");
     MenuItem verticalOrientationMenuItem = new MenuItem("Vertical");
 
+//=============================== Constructor ==========================================================================
+
     public PictureChatClient(String serverAddress, String chatName, String password) throws  Exception{
         localChatName = chatName;
         if(serverAddress.contains(" ") || chatName.contains(" ") || password.contains(" ")){
@@ -118,7 +132,7 @@ public class PictureChatClient implements ActionListener, Runnable {
             s = new Socket(serverAddress, 5555);
         }
         catch(ConnectException ce){
-            System.out.println("Connection to PrivateChatServer at " + serverAddress + " on port 5555 has failed");
+            System.out.println("Connection to PictureChatServer at " + serverAddress + " on port 5555 has failed");
             System.out.println("Is server address correct? Has the server been started on port 5555?");
             return; // terminate so user can fix and restart
         }
@@ -134,29 +148,44 @@ public class PictureChatClient implements ActionListener, Runnable {
             throw new IllegalArgumentException("Join of " + chatName + " with password " + password + " was not successful");
 
         topPanel.add(whosInButton);
+        topPanel.add(loadMyPicturesButton);
         topPanel.add(showInstructionsButton);
-        topPanel.add(errMsgTextField);
+        //topPanel.add(errMsgTextField);
         topPanel.setLayout(new GridLayout(1, 3));
+
+        splitPanePanel.add(sendChatArea);
+        splitPanePanel.add(picturesScrollPane);
+        splitPanePanel.setLayout(new GridLayout(1,2));
 
         bottomPanel.add(sendPublicButton);
         bottomPanel.add(sendPrivateButton);
-        bottomPanel.setLayout(new GridLayout(1, 2));
+        bottomPanel.add(errMsgTextField);
+        bottomPanel.setLayout(new GridLayout(1, 3));
 
         chatWindow.getContentPane().add(topPanel, "North");
         chatWindow.getContentPane().add(chatSplitPane, "Center");
         chatWindow.getContentPane().add(bottomPanel, "South");
 
-        chatWindow.setTitle(chatName + "'s CHAT ROOM (Close this window to leave the chat room.)");
+        chatWindow.setTitle(chatName + "'s CHAT ROOM. Local directory is " + localDirectory + " *** Close this window to leave the chat room ***");
 
         sendPublicButton.setBackground(Color.green);
         sendPrivateButton.setBackground(Color.yellow);
+
+        sendChatArea.setLineWrap(true);
+        sendChatArea.setWrapStyleWord(true);
 
         receiveChatArea.setLineWrap(true);
         receiveChatArea.setWrapStyleWord(true);
 
         receiveChatArea.setEditable(false);
-        errMsgTextField.setEditable(false);
+        //errMsgTextField.setEditable(false); //removed to allow user to scroll through long err message
         whosInTextField.setEditable(false);
+
+        whosInButton.setBackground(Color.cyan);
+        loadMyPicturesButton.setBackground(Color.blue);
+        loadMyPicturesButton.setForeground(Color.white); // white print on dark background
+
+        picturesList.setSelectionMode(0); // SINGLE select mode
 
         receiveChatArea.setText("VIEW received chat messages HERE (including the ones you sent.)" +
                                 newLine + "The bar separating the IN and OUT areas can be moved.");
@@ -166,6 +195,8 @@ public class PictureChatClient implements ActionListener, Runnable {
         showInstructionsButton.addActionListener(this);
         selectIgnoreButton.addActionListener(this);
         savedIgnoreButton.addActionListener(this);
+        loadMyPicturesButton.addActionListener(this);
+        picturesList.addListSelectionListener(this);
 
         chatWindow.setSize(1000, 400);
         chatWindow.setLocation(400, 100);
@@ -225,9 +256,10 @@ public class PictureChatClient implements ActionListener, Runnable {
 
 
     }
+//=============================== Main =================================================================================
 
     public static void main(String[] args){
-        System.out.println("PrivateChatClient: by Marcus Kok");
+        System.out.println("PictureChatClient: by Marcus Kok");
         if(args.length != 3){
             System.out.println("Restart, enter THREE parameters: \n 1. server address \n 2. chat name \n 3. password");
             return;
@@ -241,11 +273,12 @@ public class PictureChatClient implements ActionListener, Runnable {
             return; // can't continue if can't load program!
         }
     }
-
+//====================== Action Performed ==============================================================================
     @Override
     public void actionPerformed(ActionEvent ae) {
         errMsgTextField.setText("");
         errMsgTextField.setBackground(Color.white);
+
         if(ae.getSource() == sendPublicButton){
             String chatMessageToSend = sendChatArea.getText().trim();
             if(chatMessageToSend.length() == 0){ // blank message!
@@ -253,36 +286,48 @@ public class PictureChatClient implements ActionListener, Runnable {
                 errMsgTextField.setBackground(Color.pink); // highlight to get attention
                 return;
             }
+            /*
             if((!whosInList.isSelectionEmpty()) || (!whosNotInList.isSelectionEmpty())){
                 errMsgTextField.setText("PUBLIC send button was pushed but PRIVATE recipients are selected.");
                 errMsgTextField.setBackground(Color.pink);
                 return;
-            }
+            }*/
             if(!whosNotInList.isSelectionEmpty()){
                 java.util.List<String> saveForRecipientsList = whosInList.getSelectedValuesList();
-                String[] saveForRecipientsArray = new String[saveForRecipientsList.size() + 1];
-                saveForRecipientsArray[0] = chatMessageToSend;
-                int i = 1;
-                for(String recipient : saveForRecipientsList){
-                    saveForRecipientsArray[i++] = recipient;
-                }
-                try{
-                    oos.writeObject(saveForRecipientsArray);
-                }
-                catch(Exception e){}
+                Vector<Object> selectedRecipientsVector = new Vector<Object>(saveForRecipientsList);
+                if(selectedPicture == null) // a picture was not selected
+                    selectedRecipientsVector.add(0, chatMessageToSend); // ad text message at top of list
+                else
+                    selectedRecipientsVector.add(0, selectedPicture); // add picture at top of list
+                Object[] saveForRecipientsArray = selectedRecipientsVector.toArray(new Object[0]);
+                send(saveForRecipientsArray);
+                whosNotInList.clearSelection();
 
             }
-            System.out.println("Your message '" + chatMessageToSend + "' is being sent to the server");
-            try{
-                oos.writeObject(chatMessageToSend);
-                sendChatArea.setText(""); // clear the input field. (indication to the user that the message was sent.)
+            if(selectedPicture == null) { // a picture has NOT been selected to send
+                System.out.println("Your message '" + chatMessageToSend + "' is being sent to the server");
+                send(chatMessageToSend);
+            } else { // a picture has been selected
+                // see if user wants to replace the description in the ImageIcon
+                selectedDescription = selectedPicture.getDescription(); // default
+                System.out.println("selectedDescription: " + selectedDescription);
+                String alteredDescription = sendChatArea.getText().trim();
+                System.out.println("alteredDescription: " + alteredDescription);
+                if (alteredDescription.startsWith("The selected picture will be sent with the default description")){
+                    selectedPicture.setDescription(localChatName + " sends " + selectedDescription);
+                    System.out.println("Description: " + selectedPicture.getDescription());
+                } else {
+                    selectedPicture.setDescription(localChatName + " sends " + alteredDescription);
+                    System.out.println("Description: " + selectedPicture.getDescription());
+                }
+                send(selectedPicture);
+                System.out.println("Picture: " + selectedPicture + " sent to server.");
+                selectedPicture.setDescription(selectedDescription); // restore original description in JList ImageIcon
+                picturesList.clearSelection();
+                selectedPicture = null; // reset selected picture indicator
             }
-            catch (Exception e){ // server is down
-                errMsgTextField.setText("Connection to the chat server has failed.");
-                errMsgTextField.setBackground(Color.pink);
-                sendChatArea.setEditable(false); // keep user from entering more messages to send
-                sendPublicButton.setEnabled(false); // disable sendButton
-            }
+
+            sendChatArea.setText(""); // clear the input field. (indication to the user that the message was sent.)
             return;
         }
 
@@ -402,8 +447,21 @@ public class PictureChatClient implements ActionListener, Runnable {
             ignoreList.setEnabled(false);
             return;
         }
-    }
+        if(ae.getSource() == loadMyPicturesButton){
+            String[] listOfFiles = localDirectory.list();
+            Vector<ImageIcon> pictures = new Vector<ImageIcon>();
+            for(String fileName : listOfFiles){pictures.add(new ImageIcon(fileName, fileName));}
 
+            if(pictures.isEmpty()){ // are there no pictures?
+                errMsgTextField.setText("No .jpg .gif or .png picture files were found in " + localDirectory);
+                errMsgTextField.setBackground(Color.pink);
+                return;
+            }
+            picturesList.setListData(pictures); // show Image Icons in Jlist on GUI
+
+        }
+    }
+//==================================== Run =============================================================================
     public void run(){ // receive
         try{ Thread.sleep(100); // pause app thread to let constructor finish
         }
@@ -420,7 +478,11 @@ public class PictureChatClient implements ActionListener, Runnable {
             while(true){
                 // receive message from server and display on GUI
                 Object somethingFromServer = ois.readObject();
-
+                if(somethingFromServer instanceof ImageIcon){
+                    ImageIcon picture = (ImageIcon) somethingFromServer;
+                    System.out.println("received: " + picture);
+                    showIncomingPicture(picture);
+                }
                 if(somethingFromServer instanceof String) {
                     boolean notBlocked = true;
                     String chatMessage = (String) somethingFromServer;
@@ -439,10 +501,10 @@ public class PictureChatClient implements ActionListener, Runnable {
                 }
                 if(somethingFromServer instanceof  String[]){
                     String[] whosInOrOutArray = (String []) somethingFromServer;
-                    System.out.println("Received: " + Arrays.toString(whosInOrOutArray));
+                    System.out.println("Received array-of-strings: " + Arrays.toString(whosInOrOutArray));
                     // code goes here to handle received arrays using the whosInOrOutArray pointer
                     String[] updateArray = new String[whosInOrOutArray.length];
-                    if(whosInOrOutArray.length > 2 || whosInOrOutArray[0].equals("ignore")) {
+                    if(whosInOrOutArray.length > 1 || whosInOrOutArray[0].equals("ignore")) {
                         for (int i = 1; i < whosInOrOutArray.length; i++) {
                             String chatName = whosInOrOutArray[i];
                             if (chatName.equals(localChatName.toUpperCase())) continue;
@@ -484,5 +546,49 @@ public class PictureChatClient implements ActionListener, Runnable {
         }
         // after catch, t thread returns to Thread object and is terminated.
 
+    }
+//============================== Methods ===============================================================================
+    @Override
+    public void valueChanged(ListSelectionEvent e) {
+        if(picturesList.getValueIsAdjusting()) return; // user is still selecting!
+        selectedPicture = picturesList.getSelectedValue();
+        if(selectedPicture == null) return;
+
+        selectedDescription = selectedPicture.getDescription();
+        System.out.println(selectedDescription + " was selected."); // show description
+        sendChatArea.setText("The selected picture will be sent with the default description: '"
+                                + selectedDescription + "' when you push a send button." + newLine
+                                + "If you want to replace this description, ERASE this space "
+                                + " and enter another description here. Then push a send button.");
+
+
+
+    }
+
+    private void showIncomingPicture(ImageIcon receivedPicture){
+        JFrame receivedPictureWindow = new JFrame();
+        receivedPictureWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        receivedPictureWindow.setTitle(receivedPicture.getDescription());
+
+        Image picture = receivedPicture.getImage(); // get access to Image that ImageIcon contains
+        int pictureWidth = picture.getWidth(receivedPictureWindow);
+        int pictureHeight = picture.getHeight(receivedPictureWindow);
+        receivedPictureWindow.setSize(pictureWidth, pictureHeight); // set window size to picture size
+        JPanel picturePanel = new RefreshingPicturePanel(picture);
+        receivedPictureWindow.getContentPane().add(picturePanel, "Center");
+        receivedPictureWindow.setLocation(chatWindow.getLocation().x, chatWindow.getLocation().y);
+        receivedPictureWindow.setVisible(true);
+    }
+
+    private void send(Object message){
+        try {
+            oos.reset();
+            oos.writeObject(message);
+        } catch (Exception e) { // server is down
+            errMsgTextField.setText(e + ": Connection to the chat server has failed.");
+            errMsgTextField.setBackground(Color.pink);
+            sendChatArea.setEditable(false); // keep user from entering more messages to send
+            sendPublicButton.setEnabled(false); // disable sendButton
+        }
     }
 }

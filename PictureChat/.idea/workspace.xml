@@ -2,20 +2,24 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="484e16b2-d1cd-4ce4-bb0a-f70fce3fad29" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/../.idea/ece492.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/PictureChat.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/PictureChatClient.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/PictureChatServer.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../PrivateChat/PrivateChat.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/PictureChat/PictureChatClient.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/PictureChat/PictureChatClient.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/PictureChat/PictureChatServer.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/PictureChat/PictureChatServer.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/passwords.ser" beforeDir="false" afterPath="$PROJECT_DIR$/passwords.ser" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/PictureChatClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/PictureChatClient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/PictureChatServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/PictureChatServer.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -32,6 +36,17 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="aspect.path.notification.shown" value="true" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Desktop/ECE492Lectures" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="project.structure.last.edited" value="Modules" />
+    <property name="project.structure.proportion" value="0.0" />
+    <property name="project.structure.side.proportion" value="0.0" />
+    <property name="settings.editor.selected.configurable" value="discord-application" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CreateClassDialog.RecentsKey">
+      <recent name="" />
+    </key>
   </component>
   <component name="RunManager" selected="Application.PictureChatClient">
     <configuration name="PictureChatClient" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
@@ -80,10 +95,26 @@
       <option name="presentableId" value="Default" />
       <updated>1613587780664</updated>
       <workItem from="1613587781754" duration="191000" />
+      <workItem from="1613762737154" duration="3825000" />
+      <workItem from="1613846053330" duration="5446000" />
+      <workItem from="1613858216454" duration="124000" />
+      <workItem from="1613860280900" duration="153000" />
+      <workItem from="1613927674904" duration="7480000" />
+      <workItem from="1613939203082" duration="1530000" />
+      <workItem from="1613941241262" duration="474000" />
+      <workItem from="1613941736912" duration="13000" />
+      <workItem from="1613941868168" duration="9133000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <watches-manager>
+      <configuration name="Application">
+        <watch expression="selectedPicture" language="JAVA" />
+      </configuration>
+    </watches-manager>
   </component>
 </project>

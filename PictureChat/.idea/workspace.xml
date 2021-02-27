@@ -2,6 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="484e16b2-d1cd-4ce4-bb0a-f70fce3fad29" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/../Bank/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Bank/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Bank/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Bank/Bank.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/RefreshingPicturePanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Quiz1/Quiz1.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Bank/src/EchoTellerServer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Bank/src/tellerServerClientInterface.java" beforeDir="false" afterPath="$PROJECT_DIR$/../Bank/src/tellerServerClientInterface.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -13,6 +21,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Class" />
+        <option value="Interface" />
       </list>
     </option>
   </component>
@@ -70,6 +79,17 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="ArquillianJUnit" factoryName="" nameIsGenerated="true">
+      <option name="arquillianRunConfiguration">
+        <value>
+          <option name="containerStateName" value="" />
+        </value>
+      </option>
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <list>
       <item itemvalue="Application.PictureChatClient" />
       <item itemvalue="Application.PictureChatServer" />
@@ -104,11 +124,23 @@
       <workItem from="1614021001501" duration="254000" />
       <workItem from="1614030369008" duration="1720000" />
       <workItem from="1614374041173" duration="92000" />
+      <workItem from="1614455302148" duration="152000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

@@ -21,14 +21,14 @@ public class EchoTellerServer extends UnicastRemoteObject implements TellerServe
     }
 
     public String showAccount(int accountNumber, String customerName){
-        return " Account number: " + accountNumber + " belongs to " + customerName;
+        return "Account number: " + accountNumber + " belongs to " + customerName;
     }
 
     public String processAccount(String processType, int accountNumber, double amount, String customerName){
-        return " Process " + processType + " for " + accountNumber + " with amount " + amount + " by " + customerName;
+        return "Process " + processType + " for " + accountNumber + " with amount " + amount + " by " + customerName;
     }
 
     public String closeOutAccount(int accountNumber, String customerName){
-        return " Closed account " + accountNumber + " by " + customerName;
+        return "Closed account " + accountNumber + " by " + customerName;
     }
 }

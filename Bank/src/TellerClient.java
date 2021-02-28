@@ -1,3 +1,4 @@
+// Marcus Kok
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -14,17 +15,18 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 
-public class TellerClientGUI implements ActionListener
+public class TellerClient implements ActionListener
 {
     public static void main(String[] args)
     {
+        System.out.println("Marcus Kok");
         if (args.length == 0)
         {
             System.out.println("Provide BankServer network address as the command line parameter.");
             return;
         }
         try {
-            new TellerClientGUI(args[0]);
+            new TellerClient(args[0]);
         }
         catch(Exception e)
         {
@@ -61,7 +63,7 @@ public class TellerClientGUI implements ActionListener
 
 
     //****************************************************************************
-    public TellerClientGUI(String serverAddress) throws Exception // CONSTRUCTOR
+    public TellerClient(String serverAddress) throws Exception // CONSTRUCTOR
     {
         System.out.println("Connecting to BankServer.");
         server = (TellerServerClientInterface) Naming.lookup("rmi://" + serverAddress + "/EchoTellerServer");
@@ -158,27 +160,34 @@ public class TellerClientGUI implements ActionListener
     {
         notAccount("createNewAccount");
         notAmount("createNewAccount");
-        displayTextArea.setText(server.createNewAccount(accountType, getCustomerName("createNewAccount")));
+        String output = server.createNewAccount(accountType, getCustomerName("createNewAccount"));
+        displayTextArea.setText(output);
+        transactionLogTextArea.append(newLine + output);
     }
 
     //*******************************************************************************
     private void showAccount() throws Exception
     {
         notAmount("showAccount");
-        displayTextArea.setText(server.showAccount(getAccountNumber("showAccount"), getCustomerName("showAccount")));
+        displayTextArea.setText(server.showAccount(getAccountNumber("showAccount"), getShortCustomerName("showAccount")));
     }
     //*******************************************************************************
     private void processAccount(String processingType) throws Exception
     {
-        displayTextArea.setText(server.processAccount(processingType, getAccountNumber("processAccount"), getAmount("processAccount"),
-                                                        getCustomerName("processAccount")));
+        String output = server.processAccount(processingType, getAccountNumber("processAccount"), getAmount("processAccount"),
+                getCustomerName("processAccount"));
+        displayTextArea.setText(output);
+        transactionLogTextArea.append(newLine + output);
+        amountTextField.setText("");
     }
 
     //********************************************************************************
     private void closeOutAccount() throws Exception
     {
         notAmount("closeOutAccount");
-        displayTextArea.setText(server.closeOutAccount(getAccountNumber("closeOutAccount"), getCustomerName("closeOutAccount")));
+        String output = server.closeOutAccount(getAccountNumber("closeOutAccount"), getCustomerName("closeOutAccount"));
+        displayTextArea.setText(output);
+        transactionLogTextArea.append(newLine + output);
     }
 
     //*************************************************************************************

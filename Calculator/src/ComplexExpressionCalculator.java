@@ -1,3 +1,4 @@
+// Marcus Kok
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,6 +14,7 @@ public class ComplexExpressionCalculator implements CalculatorInterface
 
     public static void main(String[] args)
     {
+        System.out.println("Marcus Kok");
         System.out.println("Enter an expression (e.g. 1 + 2 + 3) or END to terminate.");
         System.out.println("Operators are + - * / ^ r  e.g. the expression 25r2 has value 5 (And ' 25 r 2 ' is OK.)");
         System.out.println("A 'unary' operator ('-' not followed by a space) is also allowed before an operand. e.g. -2 + -3 has value -5 (-2+-3 is OK)");

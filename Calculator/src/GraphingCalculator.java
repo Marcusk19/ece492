@@ -9,7 +9,7 @@ import java.io.InputStreamReader;
 // replace them with 'n' (making them an operand attribute rather than
 // an operator).
 
-public class ComplexExpressionCalculator implements CalculatorInterface
+public class GraphingCalculator implements CalculatorInterface
 {
 
     public static void main(String[] args)
@@ -18,9 +18,11 @@ public class ComplexExpressionCalculator implements CalculatorInterface
         System.out.println("Enter an expression (e.g. 1 + 2 + 3) or END to terminate.");
         System.out.println("Operators are + - * / ^ r  e.g. the expression 25r2 has value 5 (And ' 25 r 2 ' is OK.)");
         System.out.println("A 'unary' operator ('-' not followed by a space) is also allowed before an operand. e.g. -2 + -3 has value -5 (-2+-3 is OK)");
-        System.out.println("An operand can be a number or the symbol x, pi or e");
+        System.out.println("An operand can be a number or the symbol x, pi or e" +
+                            " If the expression contains x, follow it with the keyword 'whenXis' followed by an x value.");
+        System.out.println("Graph the equation by adding keyword 'by' after 'whenXis' to specify the increments of x you want to graph by");
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        CalculatorInterface sec = new ComplexExpressionCalculator();
+        CalculatorInterface sec = new GraphingCalculator();
         String expression      = null;
         String expressionValue = null;
         while(true)
@@ -30,9 +32,39 @@ public class ComplexExpressionCalculator implements CalculatorInterface
             if (expression.length() == 0) continue; // skip blank entry
             if (expression.equalsIgnoreCase("END")) break; // operator termination
             try {
-                System.out.println("check: " + expression);
-                expressionValue = sec.calculate(expression);
-                System.out.println(expression + " = " + expressionValue);
+                expression = expression.toLowerCase();
+                if(expression.contains("whenxis")){
+                    double in = 0; // declaring increment variable in case we need to graph
+                    boolean graph = false;
+                    if(expression.contains("by")){ // check for graph
+                        graph = true;
+                        System.out.println("In graph mode");
+                        in = Double.parseDouble(expression.substring(expression.indexOf('y') + 1));
+                        System.out.println("Increment = " + in);
+                        expression = expression.substring(0, expression.indexOf("by")); // cut off the by portion of string
+                    }
+                    String xString = expression.substring(expression.indexOf("whenxis"));
+                    double x;
+                    // check for a value of x input as "pi" or "e"
+                    if(xString.substring(7).trim().equalsIgnoreCase("pi")) x = Math.PI;
+                    else if(xString.substring(7).trim().equalsIgnoreCase("e")) x = Math.E;
+                    else x = Double.parseDouble(xString.substring(7));
+                    expression = expression.substring(0, expression.indexOf("whenxis"));
+                    // System.out.println("value of x is: " + x);
+                    if(graph){
+                        System.out.println("graphing");
+                        expressionValue = sec.calculate(expression, x, in);
+                        System.out.println(expressionValue);
+                    }
+                    else {
+                        expressionValue = sec.calculate(expression, x).trim();
+                        System.out.println(expression.trim() + " = " + expressionValue + " whenXis " + x);
+                    }
+                }
+                else {
+                    expressionValue = sec.calculate(expression);
+                    System.out.println(expression + " = " + expressionValue);
+                }
             }
             catch(Exception e)
             {
@@ -42,13 +74,55 @@ public class ComplexExpressionCalculator implements CalculatorInterface
     } // return of main thread terminates program.
 
     // INSTANCE VARIABLES (in each program object) **************************
-    public boolean debugMode = true;
+    public boolean debugMode = false;
 
 
     // METHODS IN THE PROGRAM OBJECT *****************************************
     public String calculate(String expression)
     {
-        //expression = expression.trim().toLowerCase();
+        if(debugMode) System.out.println("Entering calculate");
+        if(expression.contains("=")) throw new IllegalArgumentException("Expression should not contain an = sign.");
+        expression = expression.trim().toLowerCase();
+        if(expression.contains("(") || expression.contains(")")) expression = replaceInnerExpression(expression); // eliminate parenthesized expressions
+        return evaluateInnerExpression(expression); // evaluate the resulting complex expression
+    }
+
+    public String calculate(String expression, double x) {
+        if(debugMode) System.out.println("Entering calculate with x value");
+        String xValueAsString = String.valueOf(x);
+        if(xValueAsString.startsWith("+")) throw new IllegalArgumentException("Positive unary not allowed in x value");
+        if(x < 0) xValueAsString = 'n' + xValueAsString.substring(1);
+        expression = expression.replace("x", xValueAsString);
+        return calculate(expression);
+    }
+
+    public String calculate(String expression, double x, double increment) {
+        double[] xValues = new double[11]; // by default graph 11 points on the graph
+        double[] yValues = new double[xValues.length];
+
+        System.out.println("X | Y");
+        for(int i = 0; i < xValues.length; i++) {
+            xValues[i] = x;
+            yValues[i] = Double.parseDouble(calculate(expression, x));
+            System.out.println(xValues[i] + " | " + yValues[i]);
+            x += increment;
+        }
+        // load the RefreshingGraphPanel passing arrays as constructor parameters
+        RefreshingGraphPanel rgp = new RefreshingGraphPanel(expression, xValues, yValues, this);
+        return calculate(expression, yValues[0]);
+    }
+
+    public void setDebugModeOn() {
+        debugMode = true;
+    }
+
+    public void setDebugModeOff() {
+        debugMode = false;
+    }
+
+    public String evaluateInnerExpression(String expression){
+        if(debugMode) System.out.println("Evaluating inner expression");
+        expression = expression.trim().toLowerCase();
         String[] operators = {"r", "^", "*", "/", "+", "-"};
 
         String currentOperator;
@@ -73,12 +147,15 @@ public class ComplexExpressionCalculator implements CalculatorInterface
                     else currentOperator = currentOperator2;
                 }
                 int index = expression.indexOf(currentOperator);
+
+                if(index == expression.length() - 1) throw new IllegalArgumentException("The expression should not end with an operator");
                 if(debugMode) System.out.println("Found index " + index + " of Operator " + currentOperator);
                 int prevOp = findPreviousOperatorOffset(expression, index);
                 int followingOp = findFollowingOperatorOffset(expression, index);
                 String leftOperand = expression.substring(prevOp+1, index);
                 String rightOperand = expression.substring(index+1, followingOp);
 
+                if(leftOperand.startsWith("+") || rightOperand.startsWith("+")) throw new IllegalArgumentException("Use of a positive unary operator is not allowed");
                 if(leftOperand.startsWith("n")) leftOperand = leftOperand.replace('n', '-');
                 if(rightOperand.startsWith("n"))  rightOperand = rightOperand.replace('n', '-');
 
@@ -117,29 +194,46 @@ public class ComplexExpressionCalculator implements CalculatorInterface
                 expression = expression.replace(expression.substring(prevOp+1, followingOp), String.valueOf(result));
                 if(debugMode) System.out.println("Reduced expression to " + expression);
                 expression = scanInnerExpression(expression);
-            }// end of while loop
+            }// end of while loop looking for operator
+
         } // end of for loop
-        if(expression.startsWith("n")) expression = expression.replace("n", "-");
+        if(expression.startsWith("n")) expression = expression.replace("n", "-"); // check for leading negative
         return expression;
     }
 
-    public String calculate(String expression, double x) {
+    private String replaceInnerExpression(String expression){
+        if(debugMode) System.out.println("Replacing inner expressions");
+        while(expression.contains("(")){
+            // keep looping until all parentheses are gone
+            int leftParenOffset = expression.indexOf("("); // we know there is one of these
+            int rightParenOffset = expression.indexOf(")"); // but we're not sure about these
+            if(rightParenOffset < 0) throw new IllegalArgumentException("Unmatched parentheses: missing ')'.");
+            if(rightParenOffset < leftParenOffset) throw new IllegalArgumentException("Invalid parentheses order: ')' before '('.");
 
-        return null;
+            int i = leftParenOffset; // scan to right from where the first left parenthesis
+            for(; i< rightParenOffset; i++){
+                if(expression.charAt(i) == '(') leftParenOffset = i; // the beginning of an "inner"
+            }
+            String innerExpression = expression.substring(leftParenOffset+1, rightParenOffset);
+            if(innerExpression.length() == 0) throw new IllegalArgumentException("inner expression () is empty");
+            if(debugMode) System.out.println("Inner expression is: " + innerExpression);
+
+            String innerExpressionValueString = evaluateInnerExpression(innerExpression);
+            if(innerExpressionValueString.startsWith("-")) innerExpressionValueString = "n" + innerExpressionValueString.substring(1);
+            if(debugMode) System.out.println("innerExpression value is " + innerExpressionValueString);
+
+            expression = expression.substring(0, leftParenOffset)
+                            + innerExpressionValueString
+                            + expression.substring(rightParenOffset+1); // drop left and right parentheses characters during the replace process
+            if(debugMode) System.out.println("After replace of an inner expression by it's value, expression is '" + expression + "'");
+            expression = expression.replace("nn","");
+            expression = expression.replace("-n", "+");
+            expression = expression.replace("+n", "-");
+            if(debugMode) System.out.println("After removal of double negative cause by replace, expression is " + expression);
+        } // bottom of while("(")
+        if(expression.contains(")")) throw new IllegalArgumentException("Unbalanced parentheses: extra')'");
+        return expression;
     }
-
-    public String calculate(String expression, double x, double increment) {
-        return null;
-    }
-
-    public void setDebugModeOn() {
-        debugMode = true;
-    }
-
-    public void setDebugModeOff() {
-        debugMode = false;
-    }
-
     //*************************************************************************
     private String scanInnerExpression(String expression)
     {

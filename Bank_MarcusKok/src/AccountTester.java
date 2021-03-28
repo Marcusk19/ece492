@@ -1,12 +1,29 @@
 public class AccountTester {
     public static void main(String[] args) {
-        Account a = new Account();
-        a.setCustomerName("Smith, Bubba");
-        System.out.println(a.getClass().getName() + " " + a.getAccountNumber() + " " + a.getCustomerName());
-
+        CheckingAccount checkingAccount = new CheckingAccount();
+        checkingAccount.setCustomerName("Smith, Bubba");
+        System.out.println(checkingAccount.getClass().getName() + " " + checkingAccount.getAccountNumber() + " " + checkingAccount.getCustomerName() + " balance " + checkingAccount.getBalance());
+        checkingAccount.deposit(500);
+        try{ checkingAccount.withdraw(1000);}
+        catch(Exception e){
+            System.out.println(e.getMessage());
+        }
+        checkingAccount.chargeFee(10);
+        try{checkingAccount.deposit(10000);}
+        catch(Exception e){
+            System.out.println(e.getMessage());
+        }
+        System.out.println(checkingAccount.toString());
         // now create second account, but this time use a constructor to set customer name field and toString()
         // to get it
-        Account a2 = new Account("Boop, Betty");
-        System.out.println(a2.toString());
+        SavingsAccount savingsAccount = new SavingsAccount("Boop, Betty");
+        savingsAccount.deposit(500);
+        try{savingsAccount.withdraw(200);}
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }
+        System.out.println(savingsAccount.toString());
+        savingsAccount.addInterest(100);
+        System.out.println(savingsAccount.toString());
     }
 }

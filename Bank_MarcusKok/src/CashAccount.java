@@ -2,7 +2,7 @@
 import java.math.BigDecimal;
 import java.math.MathContext;
 
-public  abstract class CashAccount extends Account{
+public  abstract class CashAccount extends Account implements CashAccountInterface{
     // instance variables
     private double balance;
     public CashAccount(){

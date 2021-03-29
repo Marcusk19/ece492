@@ -1,5 +1,5 @@
 // Marcus Kok
-public class CheckingAccount extends CashAccount{
+public class CheckingAccount extends CashAccount implements CheckingAccountInterface{
     private double feesPaid;
     public CheckingAccount() {
         super();
@@ -13,7 +13,7 @@ public class CheckingAccount extends CashAccount{
         return feesPaid;
     }
 
-    public void chargeFee(double feesPaid){
+    public void payFee(double feesPaid){
         if(feesPaid < 0) throw new IllegalArgumentException("Charged fee cannot be negative.");
         this.feesPaid += feesPaid;
 

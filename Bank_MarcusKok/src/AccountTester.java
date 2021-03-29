@@ -8,7 +8,7 @@ public class AccountTester {
         catch(Exception e){
             System.out.println(e.getMessage());
         }
-        checkingAccount.chargeFee(10);
+        checkingAccount.payFee(10);
         try{checkingAccount.deposit(10000);}
         catch(Exception e){
             System.out.println(e.getMessage());

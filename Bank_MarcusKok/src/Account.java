@@ -1,7 +1,7 @@
 // Marcus Kok
 import java.io.*;
 
-public abstract class Account implements Serializable {
+public abstract class Account implements Serializable, AccountInterface {
     // Java Bean to hold bank account data for a specific customer
     private String customerName; // Note that INITIAL values are NOT provided!
     private int accountNumber; // This is the TEMPLATE to create a new EMPTY Account Bean

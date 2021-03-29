@@ -1,5 +1,5 @@
 // Marcus Kok
-public class SavingsAccount extends CashAccount{
+public class SavingsAccount extends CashAccount implements SavingsAccountInterface{
     private double interestReceived;
 
     public SavingsAccount() {

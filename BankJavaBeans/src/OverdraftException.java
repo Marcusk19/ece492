@@ -1,21 +1,35 @@
-// Marcus Kok
-public class OverdraftException extends Exception{
-    public OverdraftException() {
+
+public class OverdraftException extends Exception
+{
+
+    public OverdraftException()
+    {
+        // TODO Auto-generated constructor stub
     }
 
-    public OverdraftException(String message) {
-        super(message);
+    public OverdraftException(String arg0)
+    {
+        super(arg0);
+        // TODO Auto-generated constructor stub
     }
 
-    public OverdraftException(String message, Throwable cause) {
-        super(message, cause);
+    public OverdraftException(Throwable arg0)
+    {
+        super(arg0);
+        // TODO Auto-generated constructor stub
     }
 
-    public OverdraftException(Throwable cause) {
-        super(cause);
+    public OverdraftException(String arg0, Throwable arg1)
+    {
+        super(arg0, arg1);
+        // TODO Auto-generated constructor stub
     }
 
-    public OverdraftException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-        super(message, cause, enableSuppression, writableStackTrace);
+    public OverdraftException(String arg0, Throwable arg1,
+                              boolean arg2, boolean arg3)
+    {
+        super(arg0, arg1, arg2, arg3);
+        // TODO Auto-generated constructor stub
     }
+
 }

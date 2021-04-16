@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="db2j">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../database/db2j.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

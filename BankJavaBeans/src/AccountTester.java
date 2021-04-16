@@ -1,5 +1,5 @@
 public class AccountTester {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         CheckingAccount checkingAccount = new CheckingAccount();
         checkingAccount.setCustomerName("Smith, Bubba");
         System.out.println(checkingAccount.getClass().getName() + " " + checkingAccount.getAccountNumber() + " " + checkingAccount.getCustomerName() + " balance " + checkingAccount.getBalance());
